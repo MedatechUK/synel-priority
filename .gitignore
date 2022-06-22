@@ -17,6 +17,8 @@ build/
 .idea/
 docs/_build/
 .vscode
+config.yml
+ngrok.exe
 
 # Coverage reports
 htmlcov/
