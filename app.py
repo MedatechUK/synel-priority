@@ -43,7 +43,7 @@ logging.basicConfig(filename=path, level=logging.DEBUG, format='%(asctime)s %(me
 #region Helper functions
 # Gets all employees from Personnel File form from Priority.
 def pri_get_employees():
-    r = requests.get(f"{API_URL}{COMPANY}/USERSB?$select=USERID, FIRSTNAME, FAMILYNAME, EMPINACTIVE",  auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD) )
+    r = requests.get(f"{API_URL}{COMPANY}/USERSB?$filter=ZSYN_CLOCKIN eq 'Y'&$select=USERID, FIRSTNAME, FAMILYNAME, EMPINACTIVE",  auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD) )
     return r.json()['value']
 
 # Updates Synel with all Employees retrieved from Priority.

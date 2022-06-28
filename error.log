@@ -2057,3 +2057,7 @@
 06/23/2022 06:04:04 PM Job "pri_update_clockings (trigger: interval[0:01:00], next run at: 2022-06-23 18:05:03 BST)" executed successfully
 06/24/2022 09:26:18 AM  * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)
 06/24/2022 09:26:18 AM  * Restarting with stat
+06/28/2022 12:39:21 PM Starting new HTTPS connection (1): apidev.medatecherp.co.uk:443
+06/28/2022 12:39:32 PM https://apidev.medatecherp.co.uk:443 "GET /odata/Priority/tabula.ini/demo/USERSB?$filter=ZSYN_CLOCKIN%20eq%20'Y'&$select=USERID,%20FIRSTNAME,%20FAMILYNAME,%20EMPINACTIVE HTTP/1.1" 200 None
+06/28/2022 12:39:32 PM Starting new HTTPS connection (1): dunlopsystems.synel-saas.com:443
+06/28/2022 12:39:37 PM https://dunlopsystems.synel-saas.com:443 "POST /ExternalAccess/InsertUpdateEmployees?login=APIAccess&password=MTonHO)5,8TS&employees=%5B%7B'ExternalId':%20'2',%20'EmployeeNo':%20'2',%20'BadgeNo':%20'2',%20'FirstName':%20'Kemals',%20'LastName':%20'Yesildaglsss',%20'StartDate':%20datetime.date(2022,%206,%2028),%20'DepartmentCode':%20'0',%20'IsActive':%20'true'%7D,%20%7B'ExternalId':%20'10',%20'EmployeeNo':%20'10',%20'BadgeNo':%20'10',%20'FirstName':%20'dasd',%20'LastName':%20None,%20'StartDate':%20datetime.date(2022,%206,%2028),%20'DepartmentCode':%20'0',%20'IsActive':%20'true'%7D%5D HTTP/1.1" 403 1233
