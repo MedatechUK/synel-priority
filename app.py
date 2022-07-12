@@ -9,14 +9,10 @@
 # 1 - Employee management methods: Insert/Update Employees
 # 2 - Swipes Export Methods: Get clockings from Synel and update Priority LOADUSERSBWORKHOURS table
 
-from flask import Flask, request, jsonify
 import requests
 import yaml
-import logging, os
+import logging, os, json
 from datetime import date
-import time
-import atexit
-from apscheduler.schedulers.background import BackgroundScheduler
 
 #region Global variables
 # Load configuration from config.yml
@@ -31,9 +27,6 @@ SYNEL_API_PASSWORD = config["SYNEL_API_PASSWORD"]
 CLOCK_UPDATE_TIME = config["CLOCK_UPDATE_TIME"]
 #endregion
 
-#region Setup
-app = Flask(__name__)
-
 # Set up error logger. Make sure error.log exists in this directory.
 path = r"error.log"
 assert os.path.isfile(path)
@@ -43,13 +36,18 @@ logging.basicConfig(filename=path, level=logging.DEBUG, format='%(asctime)s %(me
 #region Helper functions
 # Gets all employees from Personnel File form from Priority.
 def pri_get_employees():
-    r = requests.get(f"{API_URL}{COMPANY}/USERSB?$filter=ZSYN_CLOCKIN eq 'Y'&$select=USERID, FIRSTNAME, FAMILYNAME, EMPINACTIVE",  auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD) )
+    r = requests.get(f"{API_URL}{COMPANY}/USERSB?$filter=ZSYN_CLOCKIN eq 'Y' and ZSYN_UPDATE eq 'Y'&$select=USERID, FIRSTNAME, FAMILYNAME, EMPINACTIVE",  auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD) )
     return r.json()['value']
+
+def pri_untick_employee(id):
+    r = requests.patch(f"{API_URL}{COMPANY}/USERSB({id})", json={'ZSYN_UPDATE': 'N'},  auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD) )
+    return r.json()
+
 
 # Updates Synel with all Employees retrieved from Priority.
 def insert_update_employees():
     pri_employees = pri_get_employees()
-    # synel_employees = pri_employees.copy()
+    synel_employees = pri_employees.copy()
     synel_employees = []
     
     for emp in pri_employees:
@@ -57,16 +55,22 @@ def insert_update_employees():
             'ExternalId': str(emp['USERID']),
             'EmployeeNo': str(emp['USERID']),
             'BadgeNo': str(emp['USERID']),
-            'FirstName': emp['FIRSTNAME'],
-            'LastName': emp['FAMILYNAME'],
-            'StartDate': date.today(),
+            'FirstName': emp['FIRSTNAME'] if emp['FIRSTNAME'] else 'n/a',
+            'LastName': emp['FAMILYNAME'] if emp['FAMILYNAME'] else 'n/a',
+            'StartDate': date.today().strftime("%Y-%m-%d"),
             'DepartmentCode':  '0',
             'IsActive': 'false' if emp['EMPINACTIVE'] == 'Y' else 'true'
         }
         synel_employees.append(emp_data)
-        
+    
+    
+    synel_employees = json.dumps(synel_employees)
     r = requests.post(f'https://dunlopsystems.synel-saas.com/ExternalAccess/InsertUpdateEmployees?login={SYNEL_API_USER}&password={SYNEL_API_PASSWORD}&employees={synel_employees}')
     
+    if(r.ok):
+        for emp in pri_employees:
+            pri_untick_employee(emp['USERID'])
+        
     return r.json()
 
 # Updates Synel with 1 employee from Priority.    
@@ -83,7 +87,7 @@ def insert_update_employee(emp):
     }
         
     r = requests.post(f'https://dunlopsystems.synel-saas.com/ExternalAccess/InsertUpdateEmployees?login={SYNEL_API_USER}&password={SYNEL_API_PASSWORD}&employees={[emp_data]}')
-    
+      
     return r.json()    
 
 # Gets all clockings Data from Synel for today for comparison.
@@ -151,33 +155,23 @@ def filter_clockings(pri_clockings, synel_clockings):
 #endregion
 
 #region Endpoint definitions
-@app.route("/synel/")
-def home():
-    return "This is the Flask App in IIS Server to handle Synel-Priority."
+# @app.route("/synel/")
+# def home():
+#     return "This is the Flask App in IIS Server to handle Synel-Priority."
 
 # Webhook is setup in business rules of Personnel File form.
 # When a personnel is created, updated the webhook will fire and caught by the endpoint below.
-@app.route("/synel/manageEmployee/", methods = ['POST'])
-def manage_employees():
-    payload = request.get_json()
-    employee = payload['USERSB']
+# @app.route("/synel/manageEmployee/", methods = ['POST'])
+# def manage_employees():
+#     payload = request.get_json()
+#     employee = payload['USERSB']
     
-    response = insert_update_employee(employee)
-    logging.info(response)
-    return jsonify(response)
+#     response = insert_update_employee(employee)
+#     logging.info(response)
+#     return jsonify(response)
 #endregion
 
-# This starts the scheduler which runs the function 'pri_update_clockings()' with specified frequency.
-# This can be configured in config.yml.
-def startScheduler():
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(func=pri_update_clockings, trigger="interval", minutes=CLOCK_UPDATE_TIME)
-    scheduler.start()
 
-    # Shut down the scheduler when exiting the app
-    atexit.register(lambda: scheduler.shutdown())
-
-if __name__ == '__main__':
-    insert_update_employees()
-    startScheduler()
-    app.run(use_reloader=False)
+# Run the functions
+pri_update_clockings()
+insert_update_employees())
