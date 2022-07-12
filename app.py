@@ -174,4 +174,4 @@ def filter_clockings(pri_clockings, synel_clockings):
 
 # Run the functions
 pri_update_clockings()
-insert_update_employees())
+insert_update_employees()
