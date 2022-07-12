@@ -64,14 +64,17 @@ def insert_update_employees():
         synel_employees.append(emp_data)
     
     
-    synel_employees = json.dumps(synel_employees)
-    r = requests.post(f'https://dunlopsystems.synel-saas.com/ExternalAccess/InsertUpdateEmployees?login={SYNEL_API_USER}&password={SYNEL_API_PASSWORD}&employees={synel_employees}')
     
-    if(r.ok):
-        for emp in pri_employees:
-            pri_untick_employee(emp['USERID'])
+    if(synel_employees):
+        synel_employees = json.dumps(synel_employees)
+
+        r = requests.post(f'https://dunlopsystems.synel-saas.com/ExternalAccess/InsertUpdateEmployees?login={SYNEL_API_USER}&password={SYNEL_API_PASSWORD}&employees={synel_employees}')
+    
+        if(r.ok):
+            for emp in pri_employees:
+                pri_untick_employee(emp['USERID'])
         
-    return r.json()
+        return r.json()
 
 # Updates Synel with 1 employee from Priority.    
 def insert_update_employee(emp):  
@@ -122,9 +125,10 @@ def pri_update_clockings():
         new_clockings.append(data)
     
     responses = []
-    for c in new_clockings:
-        r = requests.post(f"{API_URL}{COMPANY}/LOADUSERSBWORKHOURS", json=c, auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD))
-        responses.append(r.json())
+    if new_clockings:
+        for c in new_clockings:
+            r = requests.post(f"{API_URL}{COMPANY}/LOADUSERSBWORKHOURS", json=c, auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD))
+            responses.append(r.json())
     return responses
 
 # Creates a key to identify records uniquely. Only for internal comparison between Pri and Synel clocking data.
