@@ -93,14 +93,24 @@ def insert_update_employee(emp):
       
     return r.json()    
 
-# Gets all clockings Data from Synel for today for comparison.
+# Gets daily clockings Data from Synel for today for comparison.
 def get_clockings():
     r = requests.get(f"https://dunlopsystems.synel-saas.com/ExternalAccess/GetClockings?login={SYNEL_API_USER}&password={SYNEL_API_PASSWORD}&fromDate={date.today()}&toDate={date.today()}")
     return r.json()
 
-# Gets all clockings data from Priority Interim Table-Work Hours form.
+# Gets ALL clocking data from Synel since 1 August.
+def get_all_clockings():
+    r = requests.get(f"https://dunlopsystems.synel-saas.com/ExternalAccess/GetClockings?login={SYNEL_API_USER}&password={SYNEL_API_PASSWORD}&fromDate=2022-08-01&toDate={date.today()}")
+    return r.json()
+
+# Gets today clockings data from Priority Interim Table-Work Hours form.
 def pri_get_clockings(): 
-    r = requests.get(f"{API_URL}{COMPANY}/LOADUSERSBWORKHOURS?$filter=CURDATE eq {str(date.today()) + 'T00:00:00%2B01:00'}&$select=DNAME, USERBCODE, CURDATE, FROMTIME",  auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD) )
+    r = requests.get(f"{API_URL}{COMPANY}/LOADUSERSBWORKHOURS?$filter=CURDATE eq {str(date.today()) + 'T00:00:00%2B01:00'}&$select=DNAME, USERBCODE, CURDATE, FROMTIME, RECORDTYPE",  auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD) )
+    return r.json()['value']
+
+# Gets all clockings data from Priority Interim Table-Work Hours form.
+def pri_get_all_clockings(): 
+    r = requests.get(f"{API_URL}{COMPANY}/LOADUSERSBWORKHOURS?$select=DNAME, USERBCODE, CURDATE, FROMTIME, RECORDTYPE",  auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD) )
     return r.json()['value']
 
 # Gets all clockings from synel and priority, then compares them by creating
@@ -116,7 +126,36 @@ def pri_update_clockings():
     
     for clock in filtered:
         data = {
-            'DNAME': clock['Direction'],
+            'DNAME': 'MAIN',
+            'RECORDTYPE': clock['Direction'],
+            'CURDATE': clock['ScanTime'].split()[0],
+            'FROMTIME': clock['ScanTime'].split()[1],
+            'DETAILS': clock['Source'],
+            'USERBCODE': clock['ExternalId']
+        }
+        new_clockings.append(data)
+    
+    responses = []
+    if new_clockings:
+        for c in new_clockings:
+            r = requests.post(f"{API_URL}{COMPANY}/LOADUSERSBWORKHOURS", json=c, auth=(PRIORITY_API_USERNAME, PRIORITY_API_PASSWORD))
+            responses.append(r.json())
+    return responses
+
+# Updates all clockings since 1 August
+def pri_update_all_clockings():
+    synel_clockings = get_all_clockings()
+
+    pri_clockings = pri_get_all_clockings()
+    
+    filtered = filter_clockings(pri_clockings, synel_clockings)
+    
+    new_clockings = []
+
+    for clock in filtered:
+        data = {
+            'DNAME': 'MAIN',
+            'RECORDTYPE': clock['Direction'],
             'CURDATE': clock['ScanTime'].split()[0],
             'FROMTIME': clock['ScanTime'].split()[1],
             'DETAILS': clock['Source'],
@@ -133,7 +172,7 @@ def pri_update_clockings():
 
 # Creates a key to identify records uniquely. Only for internal comparison between Pri and Synel clocking data.
 def pri_create_composite_key(pri_clocking):
-    key = pri_clocking['USERBCODE'] + pri_clocking['DNAME'] + pri_clocking['CURDATE'].split('T')[0] + pri_clocking['FROMTIME']
+    key = pri_clocking['USERBCODE'] + pri_clocking['RECORDTYPE'] + pri_clocking['CURDATE'].split('T')[0] + pri_clocking['FROMTIME']
     return key
 
 # Creates a key to identify records uniquely. Only for internal comparison between Pri and Synel clocking data.
@@ -177,5 +216,10 @@ def filter_clockings(pri_clockings, synel_clockings):
 
 
 # Run the functions
-pri_update_clockings()
-insert_update_employees()
+if __name__ == "__main__":
+    pri_update_clockings()
+    insert_update_employees()
+
+# print(len(pri_get_all_clockings()))
+# print(len(get_all_clockings()))
+# print(pri_update_all_clockings())
